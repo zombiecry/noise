@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 //noise instance
+[ExecuteInEditMode]
 public class Noise : MonoBehaviour {
     static public Noise    instance;
     private readonly int[] permutation = { 151,160,137,91,90,15,                 // Hash lookup table as defined by Ken Perlin.  This is a randomly
@@ -38,11 +39,11 @@ public class Noise : MonoBehaviour {
         int xi = (int)x & 255;                      //restrict to [0,255]
         float xf = x - (int)x;
         float u = Fade(xf);
-        int rand0 = mRands[xi];
-        int rand1 = mRands[IncrGridIndex(xi)];      //random number for selecting point gradient
-        float contribute0 = GradHash(rand0, xf);
-        float contribute1 = GradHash(rand1, xf - 1);
-        float y = Mathf.Lerp(contribute0, contribute1, u);
+        int randa = mRands[xi];
+        int randb = mRands[IncrGridIndex(xi)];      //random number for selecting point gradient
+        float ga = GradHash(randa, xf);
+        float gb = GradHash(randb, xf - 1);
+        float y = Mathf.Lerp(ga, gb, u);
         return y;
     }
     float PerlinNoise(Vector2 val) {
@@ -62,15 +63,19 @@ public class Noise : MonoBehaviour {
         int randab = mRands[mRands[xi] + IncrGridIndex(yi)];
         int randbb = mRands[mRands[IncrGridIndex(xi)] + IncrGridIndex(yi)];
         int randba = mRands[mRands[IncrGridIndex(xi)] + yi];
-
-        float gaa = GradHash(randaa, xf, yf);
-        float gab = GradHash(randab, xf, yf-1);
-        float gba = GradHash(randba, xf, yf - 1);
-        float gbb = GradHash(randbb, xf - 1, yf - 1);
-
-        float ya = Mathf.Lerp(gab, gaa, u);
-        float yb = Mathf.Lerp(gbb, gba, u);
-        float yfinal = Mathf.Lerp(yb, ya, v); 
+		// ab ......... bb
+		// .			.
+		// .			.
+		// .			.
+		// aa ......... ba
+        float gaa = GradHash(randaa, xf  , yf);
+        float gab = GradHash(randab, xf  , yf-1);
+		float gbb = GradHash(randbb, xf-1, yf-1);
+        float gba = GradHash(randba, xf-1, yf);
+        
+        float ya = Mathf.Lerp(gaa, gba, u);
+        float yb = Mathf.Lerp(gab, gbb, u);
+        float yfinal = Mathf.Lerp(ya, yb, v); 
         return yfinal;
     }
     public float GetOctavesNoise(float v, int octaveNum,float persistence)

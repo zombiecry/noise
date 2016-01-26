@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.IO;
+[ExecuteInEditMode]
 public class NoiseDebugger : MonoBehaviour {
     public float mNoiseLength = 10.0f;
     public float mSampleNum = 100;
@@ -19,6 +20,11 @@ public class NoiseDebugger : MonoBehaviour {
 	
 	}
 	public void GenerateTexture() {
+		if (Noise.instance == null) 
+		{
+			Debug.LogError ("Noise.instance is null");
+			return;
+		}
         int width = mWidth;
         int height = mHeight;
         float noiseWidth = mNoiseWidth;
@@ -38,7 +44,7 @@ public class NoiseDebugger : MonoBehaviour {
         texture.Apply();
         byte[] bin = texture.EncodeToPNG();
         File.WriteAllBytes(Application.dataPath + "/../GeneratedNoise.png", bin);
-        Object.Destroy(texture);
+        Object.DestroyImmediate(texture);
     }
 	// Update is called once per frame
 	void Update () {
