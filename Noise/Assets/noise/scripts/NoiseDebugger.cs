@@ -35,7 +35,7 @@ public class NoiseDebugger : MonoBehaviour {
             for (int j = 0; j < texture.height; j++)
             {
                 Vector2 v = new Vector2(i * noiseWidth / texture.width, j * noiseHeight / texture.height);
-                float y = Noise.instance.GetOctavesNoise(v, 1, 1);
+				float y = Noise.instance.GetOctavesNoise(v, mOctaveNum, mPersistence);
                 y = (y + 1) * 0.5f;
                 Color color = new Color(y, y, y);
                 texture.SetPixel(i, j, color);
