@@ -4,7 +4,7 @@ using System.Collections;
 [ExecuteInEditMode]
 public class Noise : MonoBehaviour {
     static public Noise    instance;
-    private readonly int[] permutation = { 151,160,137,91,90,15,                 // Hash lookup table as defined by Ken Perlin.  This is a randomly
+    private readonly int[] permutation = { 151,160,137,91,90,15,                        // Hash lookup table as defined by Ken Perlin.  This is a randomly
     131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,        // arranged array of all numbers from 0-255 inclusive.
     190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
     88,237,149,56,87,174,20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,
@@ -78,6 +78,69 @@ public class Noise : MonoBehaviour {
         float yfinal = Mathf.Lerp(ya, yb, v); 
         return yfinal;
     }
+    public float PerlinNoise(Vector3 val)
+    {
+        float x = val.x;
+        float y = val.y;
+        float z = val.z;
+        if (mRepeat > 0)
+        {
+            x = x % mRepeat;
+            y = y % mRepeat;
+            z = z % mRepeat;
+        }
+        int xi = (int)x & 255;
+        int yi = (int)y & 255;
+        int zi = (int)z & 255;
+
+        float xf = x - (int)x;
+        float yf = y - (int)y;
+        float zf = z - (int)z;
+
+        float u = Fade(xf);
+        float v = Fade(yf);
+        float w = Fade(zf);
+
+        //             abb --------------- bbb
+        //            / |                  /|
+        //           /  |                 / |
+        //          aba --------------- bba |
+        //          |   |               |   |
+        //          |   |               |   |
+        //          |  aab--------------|--bab
+        //          |  /                |  /
+        //          | /                 | /
+        //          aaa -------------- baa
+        int randaaa = mRands[mRands[mRands[xi] + yi] + zi];
+        int randbaa = mRands[mRands[mRands[IncrGridIndex(xi)] + yi] + zi];
+        int randbab = mRands[mRands[mRands[IncrGridIndex(xi)] + yi] + IncrGridIndex(zi)];
+        int randaab = mRands[mRands[mRands[xi] + yi] + IncrGridIndex(zi)];
+        int randaba = mRands[mRands[mRands[xi] + IncrGridIndex(yi)] + zi];
+        int randbba = mRands[mRands[mRands[IncrGridIndex(xi)] + IncrGridIndex(yi)] + zi];
+        int randbbb = mRands[mRands[mRands[IncrGridIndex(xi)] + IncrGridIndex(yi)] + IncrGridIndex(zi)];
+        int randabb = mRands[mRands[mRands[xi] + IncrGridIndex(yi)] + IncrGridIndex(zi)];
+
+        float gaaa = GradHash(randaaa, xf, yf, zf);
+        float gbaa = GradHash(randbaa, xf - 1, yf, zf);
+        float gbab = GradHash(randbab, xf - 1, yf, zf - 1);
+        float gaab = GradHash(randaab, xf, yf, zf - 1);
+        float gaba = GradHash(randaba, xf, yf - 1, zf);
+        float gbba = GradHash(randbba, xf - 1, yf - 1, zf);
+        float gbbb = GradHash(randbbb, xf - 1, yf - 1, zf - 1);
+        float gabb = GradHash(randabb, xf, yf - 1, zf - 1);
+
+        float ymaa = Mathf.Lerp(gaaa, gbaa, u);
+        float ymab = Mathf.Lerp(gaab, gbab, u);
+        float ymba = Mathf.Lerp(gaba, gbba, u);
+        float ymbb = Mathf.Lerp(gabb, gbbb, u);
+
+        float ymma = Mathf.Lerp(ymaa, ymba, v);
+        float ymmb = Mathf.Lerp(ymab, ymbb, v);
+
+        float yFinal = Mathf.Lerp(ymma, ymmb, w);
+        return yFinal;
+
+    }
     public float GetOctavesNoise(float v, int octaveNum,float persistence)
     {
         float frequency = 1.0f;
@@ -108,7 +171,21 @@ public class Noise : MonoBehaviour {
         }
         return total / maxTotal;
     }
-    
+    public float GetOctavesNoise(Vector3 v, int octaveNum, float persistence)
+    {
+        float frequency = 1.0f;
+        float amplitude = 1.0f;
+        float total = 0.0f;
+        float maxTotal = 0.0f;
+        for (int i = 0; i < octaveNum; i++)
+        {
+            total += PerlinNoise(frequency * v) * amplitude;
+            maxTotal += amplitude;
+            amplitude *= persistence;
+            frequency *= 2;
+        }
+        return total / maxTotal;
+    }
     private float Fade(float t) 
     {
         return t * t * t * (t * (t * 6 - 15) + 10);
@@ -134,17 +211,40 @@ public class Noise : MonoBehaviour {
         }
     }
     private float GradHash(int hash,float x,float y) {
-        switch (hash & 0x11) {
+        switch (hash & 0x3) {
             case 0x0:
                 return x;
             case 0x1:
                 return -x;
-            case 0x10:
+            case 0x3:
                 return y;
-            case 0x11:
+            case 0x4:
                 return -y;
             default:
                 return 0.0f;
+        }
+    }
+    private float GradHash(int hash,float x,float y,float z)
+    {
+        switch (hash & 0xF)
+        {
+            case 0x0: return x + y;
+            case 0x1: return -x + y;
+            case 0x2: return x - y;
+            case 0x3: return -x - y;
+            case 0x4: return x + z;
+            case 0x5: return -x + z;
+            case 0x6: return x - z;
+            case 0x7: return -x - z;
+            case 0x8: return y + z;
+            case 0x9: return -y + z;
+            case 0xA: return y - z;
+            case 0xB: return -y - z;
+            case 0xC: return y + x;
+            case 0xD: return -y + z;
+            case 0xE: return y - x;
+            case 0xF: return -y - z;
+            default: return 0; // never happens
         }
     }
 }
